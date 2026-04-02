@@ -8,7 +8,7 @@ import (
 
 var globalPacer = NewPacer(context.Background(), time.Second/60)
 
-// Pace paces a frame update at the global frame rate (60 FPS by default).
+// Pace paces a function at the global frame rate (60 FPS by default).
 func Pace(tick func(time.Time)) {
 	globalPacer.Pace(tick)
 }

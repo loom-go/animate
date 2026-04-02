@@ -6,21 +6,15 @@ import (
 	"time"
 )
 
-// Ease represents an animation that can be run with Run.
+// Ease represents an animation thaht progresses from 0 to 1 over a duration of time.
 type Ease struct {
-	Context  context.Context
 	Duration time.Duration
 	Easing   func(progress float64) float64
 	Tick     func(progress float64)
 	Pacer    *Pacer
 }
 
-func (a Ease) Run() {
-	ctx := a.Context
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
+func (a Ease) Run(ctx context.Context) {
 	pacer := a.Pacer
 	if pacer == nil {
 		pacer = globalPacer
