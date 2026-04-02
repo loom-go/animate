@@ -68,13 +68,13 @@ a := animate.Ease{
         fmt.Printf("Progress: %v\n", progress)
     },
 
-    // easing function to apply on `progress`
-    Easing:   animate.EaseOutQuad,
-
     // specify a duration
     Duration: time.Second * 2,
 
-    // optionally specify a custom pacer.
+    // easing function to apply on `progress` (optional)
+    Easing: animate.EaseOutQuad,
+
+    // specify a custom pacer (optional)
     // else the global pacer is used (60FPS)
     Pacer: pacer,
 }
@@ -90,7 +90,43 @@ animate.RunAsync(a)
 
 ### Spring
 
-TODO
+Animate a value using a spring physics simulation:
+
+```go
+// create a new Spring animation
+a := animate.Spring{
+    // Tick is called on each frame
+    Tick: func(value float64) {
+        fmt.Printf("Value: %v\n", value)
+    },
+
+    // starting value
+    From: 0,
+
+    // target value
+    To: 100,
+
+    // spring physics parameters (optional)
+    Tension:  200,
+    Friction: 20,
+    Mass:     1,
+
+    // precision for stopping (optional)
+    Precision: 0.01,
+
+    // specify a custom pacer (optional)
+    // else the global pacer is used (60FPS)
+    Pacer: pacer,
+}
+
+// run the animation and stop if the context is cancelled
+a.Run(context.Background())
+
+// it can also be run with
+animate.Run(a)
+// or async
+animate.RunAsync(a)
+```
 
 ### Timeline
 
