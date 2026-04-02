@@ -1,25 +1,34 @@
 package animate
 
-import "context"
+import (
+	"context"
+	"sync"
+)
 
 type Animation interface {
 	Run(ctx context.Context)
 }
 
 // Run executes the given animation A and blocks until it is complete.
-func Run(a Animation) {
-	RunCtx(context.Background(), a)
+func Run(animations ...Animation) {
+	RunContext(context.Background(), animations...)
 }
 
 // RunAsync executes the given animation A in a new goroutine without blocking.
-func RunAsync(a Animation) {
-	RunCtxAsync(context.Background(), a)
+func RunAsync(animations ...Animation) {
+	RunContextAsync(context.Background(), animations...)
 }
 
-func RunCtx(ctx context.Context, a Animation) {
-	a.Run(ctx)
+func RunContext(ctx context.Context, animations ...Animation) {
+	var wg sync.WaitGroup
+
+	for _, a := range animations {
+		wg.Go(func() { a.Run(ctx) })
+	}
+
+	wg.Wait()
 }
 
-func RunCtxAsync(ctx context.Context, a Animation) {
-	go RunCtx(ctx, a)
+func RunContextAsync(ctx context.Context, animations ...Animation) {
+	go RunContext(ctx, animations...)
 }
