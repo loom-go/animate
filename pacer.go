@@ -42,6 +42,8 @@ func NewPacer(ctx context.Context, rate time.Duration) *Pacer {
 }
 
 func (p *Pacer) loop() {
+	defer p.drain()
+
 	ticker := time.NewTicker(p.rate)
 	defer ticker.Stop()
 
@@ -64,11 +66,10 @@ func (p *Pacer) loop() {
 		for _, req := range reqs {
 			select {
 			case <-p.ctx.Done():
-				return
 			default:
+				req.tick(now)
 			}
 
-			req.tick(now)
 			close(req.done)
 		}
 	}
@@ -80,9 +81,25 @@ func (p *Pacer) Pace(tick func(time.Time)) {
 		done: make(chan struct{}),
 	}
 
-	p.mu.Lock()
-	p.requests = append(p.requests, req)
-	p.mu.Unlock()
+	select {
+	case <-p.ctx.Done():
+		close(req.done)
+	default:
+		p.mu.Lock()
+		p.requests = append(p.requests, req)
+		p.mu.Unlock()
+	}
 
 	<-req.done
+}
+
+func (p *Pacer) drain() {
+	p.mu.Lock()
+	reqs := p.requests
+	p.requests = nil
+	p.mu.Unlock()
+
+	for _, req := range reqs {
+		close(req.done)
+	}
 }

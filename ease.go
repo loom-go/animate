@@ -35,6 +35,7 @@ func (a Ease) Run(ctx context.Context) {
 		default:
 		}
 
+		settled := false
 		pacer.Pace(func(now time.Time) {
 			elapsed := max(0, now.Sub(start))
 
@@ -46,10 +47,15 @@ func (a Ease) Run(ctx context.Context) {
 			elapsed = min(elapsed, a.Duration)
 			progress := float64(elapsed) / float64(a.Duration)
 
-			a.Tick(easing(progress))
+			if finite && now.Sub(start) >= a.Duration {
+				a.Tick(1)
+				settled = true
+			} else {
+				a.Tick(easing(progress))
+			}
 		})
 
-		if finite && time.Since(start) > a.Duration {
+		if settled {
 			break
 		}
 	}

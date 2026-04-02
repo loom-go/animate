@@ -4,19 +4,19 @@
 
 ```go
 animate.Run(animate.Ease{
-    Easing:   animate.EaseOutQuad,
     Tick: func(progress float64) {
         fmt.Printf("Progress: %v\n", progress)
     },
     Duration: time.Second * 2,
+    Easing:   animate.EaseOutQuad,
 })
 ```
 
 ## Features
 
-- Easings
-- Springs
-- Timelines and keyframes
+- Easing
+- Spring
+- Timeline and keyframes
 - Precise frame pacing
 
 ## Usage
