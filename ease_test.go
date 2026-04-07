@@ -3,6 +3,7 @@ package animate
 import (
 	"context"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,7 +35,7 @@ func TestEase(t *testing.T) {
 
 		for i, log := range logs {
 			if i == len(logs)-1 {
-				assert.Equal(t, 1.0, logs[4], "should end at exactly 1.0")
+				assert.Equal(t, 1.0, logs[len(logs)-1], "should end at exactly 1.0")
 			}
 
 			expected := float64(i+1) / float64(len(logs))
@@ -152,5 +153,87 @@ func TestEase(t *testing.T) {
 		assert.NotPanics(t, func() {
 			animation.Run(context.Background())
 		})
+	})
+
+	t.Run("can pause and resume the animation", func(t *testing.T) {
+		const duration = 10 * time.Millisecond
+
+		var wg sync.WaitGroup
+		var mu sync.Mutex
+		var logs []float64
+
+		pacer := NewPacer(context.Background(), 2*time.Millisecond)
+		animation := Ease{
+			Pacer:    pacer,
+			Duration: duration,
+			Tick: func(progress float64) {
+				mu.Lock()
+				logs = append(logs, progress)
+				mu.Unlock()
+			},
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		wg.Go(func() { animation.Run(ctx) })
+
+		time.Sleep(3 * time.Millisecond)
+		animation.Pause()
+
+		mu.Lock()
+		assert.True(t, animation.IsPaused(), "should report as paused")
+		assert.False(t, animation.IsRunning(), "should report as not running while paused")
+		assert.Less(t, logs[len(logs)-1], 1.0, "should not have completed before pausing")
+		mu.Unlock()
+
+		time.Sleep(3 * time.Millisecond)
+		animation.Resume()
+
+		wg.Wait()
+
+		mu.Lock()
+		assert.False(t, animation.IsPaused(), "should report as not paused")
+		assert.False(t, animation.IsRunning(), "should report as not running after completion")
+		assert.Equal(t, 1.0, logs[len(logs)-1], "should end at exactly 1.0")
+		mu.Unlock()
+	})
+
+	t.Run("can stop the animation", func(t *testing.T) {
+		const duration = 10 * time.Millisecond
+
+		var wg sync.WaitGroup
+		var mu sync.Mutex
+		var logs []float64
+
+		pacer := NewPacer(context.Background(), 2*time.Millisecond)
+		animation := Ease{
+			Pacer:    pacer,
+			Duration: duration,
+			Tick: func(progress float64) {
+				mu.Lock()
+				logs = append(logs, progress)
+				mu.Unlock()
+			},
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		wg.Go(func() { animation.Run(ctx) })
+
+		time.Sleep(3 * time.Millisecond)
+		animation.Stop()
+
+		mu.Lock()
+		assert.False(t, animation.IsRunning(), "should report as not running after stopping")
+		assert.False(t, animation.IsPaused(), "should report as not paused after stopping")
+		mu.Unlock()
+
+		wg.Wait()
+
+		mu.Lock()
+		assert.Less(t, logs[len(logs)-1], 1.0, "should not have completed before stopping")
+		mu.Unlock()
 	})
 }

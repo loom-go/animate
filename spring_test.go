@@ -2,6 +2,7 @@ package animate
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -122,5 +123,87 @@ func TestSpring(t *testing.T) {
 		assert.NotPanics(t, func() {
 			animation.Run(ctx)
 		})
+	})
+
+	t.Run("can pause and resume the animation", func(t *testing.T) {
+		var wg sync.WaitGroup
+		var mu sync.Mutex
+		var logs []float64
+
+		pacer := NewPacer(context.Background(), time.Millisecond)
+		animation := Spring{
+			Pacer:   pacer,
+			Tension: 200, Friction: 20,
+			From: 0, To: 1,
+			Tick: func(value float64) {
+				mu.Lock()
+				logs = append(logs, value)
+				mu.Unlock()
+			},
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		wg.Go(func() { animation.Run(ctx) })
+
+		time.Sleep(10 * time.Millisecond)
+		animation.Pause()
+
+		mu.Lock()
+		assert.True(t, animation.IsPaused(), "should report as paused")
+		assert.False(t, animation.IsRunning(), "should report as not running while paused")
+		assert.Less(t, logs[len(logs)-1], 1.0, "should not have completed before pausing")
+		mu.Unlock()
+
+		time.Sleep(10 * time.Millisecond)
+		animation.Resume()
+
+		wg.Wait()
+
+		mu.Lock()
+		assert.False(t, animation.IsPaused(), "should report as not paused")
+		assert.False(t, animation.IsRunning(), "should report as not running after completion")
+		assert.InDelta(t, 1.0, logs[len(logs)-1], 0.01, "should end at approximately the 'To' value")
+		mu.Unlock()
+	})
+
+	t.Run("can stop the animation", func(t *testing.T) {
+		var wg sync.WaitGroup
+		var mu sync.Mutex
+		var logs []float64
+
+		pacer := NewPacer(context.Background(), time.Millisecond)
+		animation := Spring{
+			Pacer:   pacer,
+			Tension: 200, Friction: 20,
+			From: 0, To: 1,
+			Tick: func(value float64) {
+				mu.Lock()
+				logs = append(logs, value)
+				mu.Unlock()
+			},
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		wg.Go(func() { animation.Run(ctx) })
+
+		time.Sleep(10 * time.Millisecond)
+		animation.Stop()
+
+		mu.Lock()
+		assert.False(t, animation.IsRunning(), "should report as not running after stopping")
+		assert.False(t, animation.IsPaused(), "should report as not paused after stopping")
+		mu.Unlock()
+
+		wg.Wait()
+
+		mu.Lock()
+		assert.False(t, animation.IsRunning(), "should report as not running after stopping")
+		assert.False(t, animation.IsPaused(), "should report as not paused after stopping")
+		assert.Less(t, logs[len(logs)-1], 1.0, "should not have completed after stopping")
+		mu.Unlock()
 	})
 }

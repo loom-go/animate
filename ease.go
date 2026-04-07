@@ -8,6 +8,8 @@ import (
 
 // Ease represents an animation thaht progresses from 0 to 1 over a duration of time.
 type Ease struct {
+	animation
+
 	Duration time.Duration
 	Easing   func(progress float64) float64
 	Tick     func(progress float64)
@@ -15,20 +17,22 @@ type Ease struct {
 }
 
 func (a *Ease) Run(ctx context.Context) {
-	start := time.Now()
+	if !a.IsIdle() {
+		return
+	}
+
+	gen := a.start()
+	defer a.end(gen)
+
 	finite := a.Duration > 0
+	start := time.Now()
 
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
+		if ctx.Err() != nil || !a.isCurrent(gen) {
+			break
 		}
 
-		pacer := a.Pacer
-		if pacer == nil {
-			pacer = globalPacer
-		}
+		pacer := or(a.Pacer, globalPacer)
 		easing := a.Easing
 		if easing == nil {
 			easing = EaseLinear
@@ -36,6 +40,10 @@ func (a *Ease) Run(ctx context.Context) {
 
 		settled := false
 		pacer.Pace(func(now time.Time) {
+			if ctx.Err() != nil || !a.isCurrent(gen) || a.IsPaused() {
+				return
+			}
+
 			elapsed := max(0, now.Sub(start))
 
 			if !finite {

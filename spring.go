@@ -7,6 +7,8 @@ import (
 )
 
 type Spring struct {
+	animation
+
 	Tension  float64
 	Friction float64
 	Mass     float64
@@ -20,46 +22,40 @@ type Spring struct {
 	Pacer *Pacer
 }
 
-func (s *Spring) Run(ctx context.Context) {
+func (a *Spring) Run(ctx context.Context) {
+	if !a.IsIdle() {
+		return
+	}
+
+	gen := a.start()
+	defer a.end(gen)
+
 	vel := 0.0
-	pos := s.From
+	pos := a.From
 	prev := time.Now()
 
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
+		if ctx.Err() != nil || !a.isCurrent(gen) {
+			break
 		}
 
-		to := s.To
+		to := a.To
 		if to != pos {
 			prev = time.Now()
 		}
 
-		pacer := s.Pacer
-		if pacer == nil {
-			pacer = globalPacer
-		}
-		tension := s.Tension
-		if tension == 0 {
-			tension = 200
-		}
-		friction := s.Friction
-		if friction == 0 {
-			friction = 20
-		}
-		mass := s.Mass
-		if mass == 0 {
-			mass = 1
-		}
-		precision := s.Precision
-		if precision == 0 {
-			precision = 0.01
-		}
+		pacer := or(a.Pacer, globalPacer)
+		tension := or(a.Tension, 200)
+		friction := or(a.Friction, 20)
+		mass := or(a.Mass, 1)
+		precision := or(a.Precision, 0.01)
 
 		settled := false
 		pacer.Pace(func(now time.Time) {
+			if ctx.Err() != nil || !a.isCurrent(gen) || a.IsPaused() {
+				return
+			}
+
 			dt := now.Sub(prev).Seconds()
 			prev = now
 
@@ -67,10 +63,10 @@ func (s *Spring) Run(ctx context.Context) {
 			vel += (force / mass) * dt
 			pos += vel * dt
 
-			s.tick(pos)
+			a.tick(pos)
 
 			if math.Abs(vel) < precision && math.Abs(pos-to) < precision {
-				s.tick(to)
+				a.tick(to)
 				settled = true
 			}
 		})
@@ -81,8 +77,8 @@ func (s *Spring) Run(ctx context.Context) {
 	}
 }
 
-func (s *Spring) tick(value float64) {
-	if s.Tick != nil {
-		s.Tick(value)
+func (a *Spring) tick(value float64) {
+	if a.Tick != nil {
+		a.Tick(value)
 	}
 }
