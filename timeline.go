@@ -17,16 +17,17 @@ type Keyframe struct {
 func (t Timeline) Run(ctx context.Context) {
 	start := time.Now()
 
-	ordered := slices.Clone(t)
-	slices.SortFunc(ordered, func(a, b Keyframe) int {
-		return int(a.At - b.At)
-	})
+	ordered := t.sort()
 
 	for i, keyframe := range ordered {
 		select {
 		case <-ctx.Done():
 			return
 		default:
+		}
+
+		if keyframe.Do == nil {
+			continue
 		}
 
 		var next time.Duration
@@ -43,4 +44,13 @@ func (t Timeline) Run(ctx context.Context) {
 
 		keyframe.Do(time.Since(start), next)
 	}
+}
+
+func (t Timeline) sort() Timeline {
+	ordered := slices.Clone(t)
+	slices.SortFunc(ordered, func(a, b Keyframe) int {
+		return int(a.At - b.At)
+	})
+
+	return ordered
 }

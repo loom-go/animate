@@ -140,4 +140,17 @@ func TestEase(t *testing.T) {
 			assert.InDelta(t, expected, log, delta, "tick %d should be close to expected eased progress", i+1)
 		}
 	})
+
+	t.Run("does not panic when Tick is nil", func(t *testing.T) {
+		pacer := NewPacer(context.Background(), time.Millisecond)
+		animation := Ease{
+			Pacer:    pacer,
+			Duration: 10 * time.Millisecond,
+			Tick:     nil,
+		}
+
+		assert.NotPanics(t, func() {
+			animation.Run(context.Background())
+		})
+	})
 }

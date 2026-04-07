@@ -103,4 +103,24 @@ func TestSpring(t *testing.T) {
 
 		animation.Run(context.Background())
 	})
+
+	t.Run("does not panic when Tick is nil", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		pacer := NewPacer(context.Background(), time.Millisecond)
+		animation := Spring{
+			Pacer:   pacer,
+			Tension: 200, Friction: 20,
+			From: 0, To: 1,
+			Tick: nil,
+		}
+
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			cancel()
+		}()
+
+		assert.NotPanics(t, func() {
+			animation.Run(ctx)
+		})
+	})
 }

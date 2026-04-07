@@ -14,17 +14,7 @@ type Ease struct {
 	Pacer    *Pacer
 }
 
-func (a Ease) Run(ctx context.Context) {
-	pacer := a.Pacer
-	if pacer == nil {
-		pacer = globalPacer
-	}
-
-	easing := a.Easing
-	if easing == nil {
-		easing = EaseLinear
-	}
-
+func (a *Ease) Run(ctx context.Context) {
 	start := time.Now()
 	finite := a.Duration > 0
 
@@ -35,12 +25,21 @@ func (a Ease) Run(ctx context.Context) {
 		default:
 		}
 
+		pacer := a.Pacer
+		if pacer == nil {
+			pacer = globalPacer
+		}
+		easing := a.Easing
+		if easing == nil {
+			easing = EaseLinear
+		}
+
 		settled := false
 		pacer.Pace(func(now time.Time) {
 			elapsed := max(0, now.Sub(start))
 
 			if !finite {
-				a.Tick(0)
+				a.tick(0)
 				return
 			}
 
@@ -48,16 +47,22 @@ func (a Ease) Run(ctx context.Context) {
 			progress := float64(elapsed) / float64(a.Duration)
 
 			if finite && now.Sub(start) >= a.Duration {
-				a.Tick(1)
+				a.tick(1)
 				settled = true
 			} else {
-				a.Tick(easing(progress))
+				a.tick(easing(progress))
 			}
 		})
 
 		if settled {
 			break
 		}
+	}
+}
+
+func (a *Ease) tick(progress float64) {
+	if a.Tick != nil {
+		a.Tick(progress)
 	}
 }
 
