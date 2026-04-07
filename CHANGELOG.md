@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/loom-go/animate/compare/v0.1.0...v0.2.0) (2026-04-07)
+
+
+### Features
+
+* pause/resume/stop ([fb3416f](https://github.com/loom-go/animate/commit/fb3416f08daa54ea2d47b6d2293c5d69be102374))
+
 ## [0.1.0](https://github.com/loom-go/animate/compare/v0.1.0...v0.1.0) (2026-04-07)
 
 
